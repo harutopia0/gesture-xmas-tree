@@ -239,7 +239,12 @@
         let pendingState = 'TREE';
         let stabilityCount = 0;
         let selectedIndex = 0;
-        let handX = 0.5;
+
+        // --- CÁC BIẾN MỚI ĐỂ XỬ LÝ XOAY MƯỢT ---
+        let targetRotationY = 0;   // Góc xoay mục tiêu (cộng dồn)
+        let currentRotationY = 0;  // Góc xoay hiện tại (để lerp)
+        let lastHandX = null;      // Vị trí tay khung hình trước
+        // ----------------------------------------
 
         function init3D() {
             const container = document.getElementById('canvas-container');
@@ -427,7 +432,7 @@
             scene.add(starMesh);
         }
 
-        function updateParticleGroup(group, type, targetState, speed, handRotY, time) {
+        function updateParticleGroup(group, type, targetState, speed, rotationY, time) {
             const positions = group.geometry.attributes.position.array;
             const velocities = group.geometry.userData.velocities;
             let effectiveState = (targetState === 'COLOR_CHANGE') ? 'TREE' : targetState;
@@ -471,8 +476,11 @@
                     group.scale.set(s, s, s);
                 }
             } else {
+                // --- XỬ LÝ XOAY EXPLODE MƯỢT ---
                 group.material.map = (type === 'gold') ? textures.blue : textures[type];
-                group.rotation.y += (handRotY - group.rotation.y) * 0.05;
+                // Thay vì gán cứng, ta dùng giá trị đã được làm mượt từ animate()
+                group.rotation.y = rotationY; 
+                // --------------------------------
             }
         }
 
@@ -480,12 +488,16 @@
             requestAnimationFrame(animate);
             const time = Date.now() * 0.001;
             const speed = 0.06;
-            const handRotY = (handX - 0.5) * 8.0; 
 
-            updateParticleGroup(groupGreen, 'green', state, speed, handRotY, time);
-            updateParticleGroup(groupGold, 'gold', state, speed, handRotY, time);
-            updateParticleGroup(groupRed, 'red', state, speed, handRotY, time);
-            updateParticleGroup(groupGift, 'gift', state, speed, handRotY, time);
+            // --- TÍNH TOÁN XOAY MƯỢT (Damping/Lerp) ---
+            // Di chuyển currentRotationY từ từ tới targetRotationY
+            currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+            // ------------------------------------------
+
+            updateParticleGroup(groupGreen, 'green', state, speed, currentRotationY, time);
+            updateParticleGroup(groupGold, 'gold', state, speed, currentRotationY, time);
+            updateParticleGroup(groupRed, 'red', state, speed, currentRotationY, time);
+            updateParticleGroup(groupGift, 'gift', state, speed, currentRotationY, time);
 
             if (state === 'TREE' || state === 'COLOR_CHANGE' || state === 'SNOW') {
                 titleMesh.visible = true;
@@ -505,7 +517,9 @@
             } else if (state === 'EXPLODE') {
                 titleMesh.visible = false;
                 starMesh.visible = false;
-                const baseAngle = groupGold.rotation.y;
+                
+                // Cập nhật vị trí xoay cho ảnh theo currentRotationY
+                const baseAngle = currentRotationY; 
                 const angleStep = (Math.PI * 2) / 5;
                 let maxZ = -999;
 
@@ -524,7 +538,6 @@
                     mesh.scale.lerp(new THREE.Vector3(s, s, s), 0.1);
                 });
             } else if (state === 'PHOTO') {
-                // Sửa lỗi: Ẩn chữ và sao khi đang xem ảnh chi tiết
                 titleMesh.visible = false;
                 starMesh.visible = false;
 
@@ -546,18 +559,12 @@
             if (currentPhotoVisibility.some(v => v)) {
                 renderer.clearDepth(); 
                 const glowObjects = [groupGreen, groupGold, groupRed, groupGift, titleMesh, starMesh, groundMirror];
-                
-                // Lưu lại trạng thái hiển thị hiện tại của glowObjects
                 const originalVisibility = glowObjects.map(obj => obj ? obj.visible : false);
-
-                // Ẩn tất cả để vẽ ảnh
                 glowObjects.forEach(obj => { if(obj) obj.visible = false; });
                 
-                // Vẽ ảnh
                 photoMeshes.forEach((m, i) => m.visible = currentPhotoVisibility[i]);
                 renderer.render(scene, camera);
                 
-                // Sửa lỗi: Khôi phục lại đúng trạng thái ban đầu, thay vì bật hết lên true
                 glowObjects.forEach((obj, i) => { if(obj) obj.visible = originalVisibility[i]; });
             }
         }
@@ -598,10 +605,28 @@
                 }
                 canvasCtx.restore();
 
-                let targetState = 'TREE';
+                let targetState = state; 
+
                 if (results.multiHandLandmarks.length > 0) {
                     const lm = results.multiHandLandmarks[0];
-                    handX = lm[9].x;
+                    const currentHandX = lm[9].x; // Lấy vị trí X hiện tại
+
+                    // --- LOGIC XOAY TƯƠNG ĐỐI (CLUTCH) ---
+                    if (state === 'EXPLODE' || state === 'PHOTO') {
+                        if (lastHandX !== null) {
+                            // Tính khoảng cách di chuyển từ khung hình trước
+                            const delta = currentHandX - lastHandX;
+                            // Cộng dồn vào góc xoay mục tiêu (nhân hệ số nhạy 5.0)
+                            targetRotationY += delta * 5.0; 
+                        }
+                        // Cập nhật vị trí cũ cho khung hình sau
+                        lastHandX = currentHandX;
+                    } else {
+                        // Nếu không phải mode xoay, reset lastHandX
+                        lastHandX = currentHandX;
+                    }
+                    // -------------------------------------
+
                     const wrist = lm[0];
                     let avgDist = [8, 12, 16, 20].reduce((acc, i) => acc + Math.hypot(lm[i].x - wrist.x, lm[i].y - wrist.y), 0) / 4;
                     const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
@@ -615,6 +640,10 @@
                     else if (indexUp && middleUp && !ringUp && !pinkyUp) targetState = 'SNOW';
                     else if (indexUp && pinkyUp && !middleUp && !ringUp) targetState = 'COLOR_CHANGE';
                     else targetState = 'EXPLODE';
+                } else {
+                    // --- QUAN TRỌNG: Khi mất tay, reset lastHandX về null ---
+                    // Để lần sau tay xuất hiện, nó không tính delta từ vị trí cũ
+                    lastHandX = null;
                 }
 
                 if (targetState === pendingState) {
