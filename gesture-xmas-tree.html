@@ -240,6 +240,7 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.autoClear = false; // Quan trọng: Tắt autoClear để render overlay
             container.appendChild(renderer.domElement);
 
             const renderScene = new THREE.RenderPass(scene, camera);
@@ -526,7 +527,37 @@
                     }
                 });
             }
-            renderer.render(scene, camera);
+
+            // --- RENDERING PIPELINE START ---
+            // Mục tiêu: Render cây với Bloom, nhưng render ảnh sạch (không bloom) lên trên
+
+            // 1. Lưu trạng thái visibility hiện tại của các ảnh
+            const currentPhotoVisibility = photoMeshes.map(m => m.visible);
+
+            // 2. Tạm ẩn tất cả ảnh để render lớp Bloom (chỉ cây và sao)
+            photoMeshes.forEach(m => m.visible = false);
+            composer.render(); // Render scene + bloom
+
+            // 3. Nếu đang ở chế độ hiển thị ảnh (EXPLODE hoặc PHOTO), render ảnh đè lên
+            const anyPhotoVisible = currentPhotoVisibility.some(v => v === true);
+            if (anyPhotoVisible) {
+                // Tắt xóa tự động để vẽ đè lên lớp bloom cũ
+                renderer.clearDepth(); // Xóa depth buffer để ảnh luôn nổi lên trên
+
+                // Ẩn các vật thể phát sáng (đã render ở bước bloom rồi)
+                const glowObjects = [groupGreen, groupGold, groupRed, groupGift, titleMesh, starMesh, groundMirror];
+                glowObjects.forEach(obj => { if(obj) obj.visible = false; });
+
+                // Hiện lại ảnh theo trạng thái logic đã tính toán
+                photoMeshes.forEach((m, i) => m.visible = currentPhotoVisibility[i]);
+
+                // Render cảnh bình thường (không qua bloom composer)
+                renderer.render(scene, camera);
+
+                // Khôi phục lại trạng thái visibility cho frame sau
+                glowObjects.forEach(obj => { if(obj) obj.visible = true; });
+            }
+            // --- RENDERING PIPELINE END ---
         }
 
         function startSystem() {
