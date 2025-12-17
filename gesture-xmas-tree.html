@@ -491,7 +491,7 @@
                     starMesh.material.color.setHex(0xffffff);
                 }
                 photoMeshes.forEach(m => {
-                    m.scale.lerp(new THREE.Vector3(0.001,0.001,0.001), 0.1);
+                    m.scale.lerp(new THREE.Vector3(0, 0, 0), 0.1);
                     m.visible = false;
                 });
             } else if (state === 'EXPLODE') {
