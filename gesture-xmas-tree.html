@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
-    <title>Gesture Xmas Tree</title>
+    <title>Gesture Xmas Tree - High Sensitivity</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
@@ -14,12 +14,11 @@
     <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/objects/Reflector.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
-            crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
-            crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
-            crossorigin="anonymous"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
     <style>
         body {
@@ -45,6 +44,31 @@
             pointer-events: none;
             z-index: 100;
         }
+
+        /* --- PREVIEW CAMERA BOX --- */
+        #preview-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            /* Kích thước hiển thị trên màn hình vẫn NHỎ (160x120) */
+            width: 160px;
+            height: 120px;
+            z-index: 200;
+            border: 2px solid #FFD700;
+            border-radius: 8px;
+            background: #000;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .output_canvas {
+            /* Canvas nội tại sẽ lớn (HD), nhưng CSS ép hiển thị nhỏ */
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+            display: block;
+        }
+        /* -------------------------- */
 
         .badge {
             display: inline-block;
@@ -100,6 +124,10 @@
             🖐 <b>Open:</b> Explode &nbsp;|&nbsp; ✊ <b>Fist:</b> Tree &nbsp;|&nbsp; ✌️ <b>V-Sign:</b> Snowfall &nbsp;|&nbsp; 🤘 <b>Rock:</b> Rainbow &nbsp;|&nbsp; 👌 <b>Pinch:</b> Memories
         </div>
         <button id="btnStart" onclick="startSystem()">START EXPERIENCE</button>
+    </div>
+
+    <div id="preview-container" style="display:none;">
+        <canvas class="output_canvas" width="640" height="480"></canvas>
     </div>
 
     <div id="canvas-container"></div>
@@ -457,6 +485,7 @@
                     group.scale.set(s, s, s);
                 }
             } else {
+                // Áp dụng xoay cho Tree và Explode
                 group.material.map = (type === 'gold') ? textures.blue : textures[type];
                 group.rotation.y += (handRotY - group.rotation.y) * 0.05;
             }
@@ -466,7 +495,10 @@
             requestAnimationFrame(animate);
             const time = Date.now() * 0.001;
             const speed = 0.06;
-            const handRotY = (handX - 0.5) * 2.5;
+            
+            // --- TĂNG ĐỘ NHẠY Ở ĐÂY ---
+            // Thay vì nhân 2.5, tăng lên 8.0 để xoay nhanh hơn
+            const handRotY = (handX - 0.5) * 8.0; 
 
             updateParticleGroup(groupGreen, 'green', state, speed, handRotY, time);
             updateParticleGroup(groupGold, 'gold', state, speed, handRotY, time);
@@ -480,16 +512,12 @@
                 starMesh.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
                 starMesh.rotation.z -= 0.02;
 
-                // --- CHỈNH SỬA CHO ROCK/RAINBOW MODE ---
                 if (state === 'COLOR_CHANGE') {
-                    // Đổi màu cầu vồng theo thời gian
                     starMesh.material.color.setHSL((time * 0.5) % 1, 1.0, 0.5);
                 } else {
-                    // Màu trắng bình thường
                     starMesh.material.color.setHex(0xffffff);
                 }
                 
-                // Giữ độ rõ nét tối đa (1.0) để không bị mờ
                 starMesh.material.opacity = 1.0; 
 
                 photoMeshes.forEach(m => {
@@ -551,11 +579,17 @@
 
         function startSystem() {
             document.getElementById('btnStart').style.display = 'none';
+            // Hiển thị khung preview khi bắt đầu
+            document.getElementById('preview-container').style.display = 'block';
+            
             bgMusic.play().catch(e => console.log(e));
             init3D();
 
             const video = document.getElementsByClassName('input_video')[0];
+            const canvasElement = document.getElementsByClassName('output_canvas')[0];
+            const canvasCtx = canvasElement.getContext('2d');
             const statusDiv = document.getElementById('status');
+
             const hands = new Hands({
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
             });
@@ -568,6 +602,30 @@
             });
 
             hands.onResults(results => {
+                // --- VẼ CAMERA PREVIEW & SKELETON (STYLE MỚI) ---
+                canvasCtx.save();
+                canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                // Vẽ ảnh camera nét (độ phân giải cao)
+                canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+                
+                if (results.multiHandLandmarks) {
+                    for (const landmarks of results.multiHandLandmarks) {
+                        // 1. Vẽ xương nối màu vàng (dày hơn một chút để nổi trên nền HD)
+                        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                                        {color: '#FFD700', lineWidth: 5}); 
+                        
+                        // 2. Vẽ viền trắng cho khớp (vẽ hình tròn trắng to hơn)
+                        drawLandmarks(canvasCtx, landmarks,
+                                        {color: '#FFFFFF', lineWidth: 0, radius: 6}); 
+
+                        // 3. Vẽ tâm đen cho khớp (vẽ đè lên chấm trắng)
+                        drawLandmarks(canvasCtx, landmarks,
+                                        {color: '#000000', lineWidth: 0, radius: 3}); 
+                    }
+                }
+                canvasCtx.restore();
+                // ------------------------------------
+
                 let targetState = 'TREE';
                 if (results.multiHandLandmarks.length > 0) {
                     const lm = results.multiHandLandmarks[0];
@@ -598,14 +656,15 @@
                 }
             });
 
+            // Tăng độ phân giải đầu vào camera để hết mờ
             const cameraUtils = new Camera(video, {
                 onFrame: async () => {
                     await hands.send({
                         image: video
                     });
                 },
-                width: 320,
-                height: 240
+                width: 640,  // Độ phân giải cao hơn (HD)
+                height: 480
             });
             cameraUtils.start();
         }
