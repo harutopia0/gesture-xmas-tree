@@ -85,35 +85,21 @@
         }
 
         @keyframes pulse {
-            0% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.05);
-            }
-
-            100% {
-                transform: scale(1);
-            }
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
 
-        .input_video {
-            display: none;
-        }
+        .input_video { display: none; }
     </style>
 </head>
 <body>
     <div id="ui-layer">
-        <div id="status"
-             class="badge">🎄 Merry Christmas 🎄</div>
+        <div id="status" class="badge">🎄 Merry Christmas 🎄</div>
         <div class="guide">
             🖐 <b>Open:</b> Explode &nbsp;|&nbsp; ✊ <b>Fist:</b> Tree &nbsp;|&nbsp; ✌️ <b>V-Sign:</b> Snowfall &nbsp;|&nbsp; 🤘 <b>Rock:</b> Rainbow &nbsp;|&nbsp; 👌 <b>Pinch:</b> Memories
         </div>
-        <button id="btnStart"
-                onclick="startSystem()">
-            START EXPERIENCE
-        </button>
+        <button id="btnStart" onclick="startSystem()">START EXPERIENCE</button>
     </div>
 
     <div id="canvas-container"></div>
@@ -134,7 +120,12 @@
             './Assets/image5.jpeg'
         ];
         const photoTextures = [];
-        photoFiles.forEach((f, i) => photoTextures[i] = loader.load(f));
+        
+        photoFiles.forEach((f, i) => {
+            const tex = loader.load(f);
+            tex.encoding = THREE.sRGBEncoding; 
+            photoTextures[i] = tex;
+        });
 
         const CONFIG = {
             greenCount: 1000,
@@ -240,7 +231,8 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.toneMapping = THREE.ReinhardToneMapping;
-            renderer.autoClear = false; // Quan trọng: Tắt autoClear để render overlay
+            renderer.autoClear = false; 
+            
             container.appendChild(renderer.domElement);
 
             const renderScene = new THREE.RenderPass(scene, camera);
@@ -352,7 +344,8 @@
             for (let i = 0; i < 5; i++) {
                 const mat = new THREE.MeshBasicMaterial({
                     map: photoTextures[i],
-                    side: THREE.DoubleSide
+                    side: THREE.DoubleSide,
+                    toneMapped: false 
                 });
                 const mesh = new THREE.Mesh(geo, mat);
                 const border = new THREE.Mesh(borderGeo, borderMat);
@@ -486,11 +479,19 @@
                 titleMesh.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
                 starMesh.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
                 starMesh.rotation.z -= 0.02;
+
+                // --- CHỈNH SỬA CHO ROCK/RAINBOW MODE ---
                 if (state === 'COLOR_CHANGE') {
+                    // Đổi màu cầu vồng theo thời gian
                     starMesh.material.color.setHSL((time * 0.5) % 1, 1.0, 0.5);
                 } else {
+                    // Màu trắng bình thường
                     starMesh.material.color.setHex(0xffffff);
                 }
+                
+                // Giữ độ rõ nét tối đa (1.0) để không bị mờ
+                starMesh.material.opacity = 1.0; 
+
                 photoMeshes.forEach(m => {
                     m.scale.lerp(new THREE.Vector3(0, 0, 0), 0.1);
                     m.visible = false;
@@ -528,36 +529,24 @@
                 });
             }
 
-            // --- RENDERING PIPELINE START ---
-            // Mục tiêu: Render cây với Bloom, nhưng render ảnh sạch (không bloom) lên trên
-
-            // 1. Lưu trạng thái visibility hiện tại của các ảnh
+            // --- RENDER PIPELINE ---
             const currentPhotoVisibility = photoMeshes.map(m => m.visible);
-
-            // 2. Tạm ẩn tất cả ảnh để render lớp Bloom (chỉ cây và sao)
+            
             photoMeshes.forEach(m => m.visible = false);
-            composer.render(); // Render scene + bloom
+            composer.render(); 
 
-            // 3. Nếu đang ở chế độ hiển thị ảnh (EXPLODE hoặc PHOTO), render ảnh đè lên
             const anyPhotoVisible = currentPhotoVisibility.some(v => v === true);
             if (anyPhotoVisible) {
-                // Tắt xóa tự động để vẽ đè lên lớp bloom cũ
-                renderer.clearDepth(); // Xóa depth buffer để ảnh luôn nổi lên trên
-
-                // Ẩn các vật thể phát sáng (đã render ở bước bloom rồi)
+                renderer.clearDepth(); 
                 const glowObjects = [groupGreen, groupGold, groupRed, groupGift, titleMesh, starMesh, groundMirror];
                 glowObjects.forEach(obj => { if(obj) obj.visible = false; });
 
-                // Hiện lại ảnh theo trạng thái logic đã tính toán
                 photoMeshes.forEach((m, i) => m.visible = currentPhotoVisibility[i]);
 
-                // Render cảnh bình thường (không qua bloom composer)
                 renderer.render(scene, camera);
 
-                // Khôi phục lại trạng thái visibility cho frame sau
                 glowObjects.forEach(obj => { if(obj) obj.visible = true; });
             }
-            // --- RENDERING PIPELINE END ---
         }
 
         function startSystem() {
