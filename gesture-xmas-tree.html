@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
-    <title>Gesture Xmas Tree - High Sensitivity</title>
+    <title>Gesture Xmas Tree</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
@@ -14,11 +14,14 @@
     <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/objects/Reflector.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
+            crossorigin="anonymous"></script>
 
     <style>
         body {
@@ -27,7 +30,6 @@
             background-color: #000;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-
         #canvas-container {
             width: 100%;
             height: 100vh;
@@ -35,7 +37,6 @@
             top: 0;
             left: 0;
         }
-
         #ui-layer {
             position: absolute;
             bottom: 30px;
@@ -44,13 +45,10 @@
             pointer-events: none;
             z-index: 100;
         }
-
-        /* --- PREVIEW CAMERA BOX --- */
         #preview-container {
             position: absolute;
             top: 20px;
             right: 20px;
-            /* Kích thước hiển thị trên màn hình vẫn NHỎ (160x120) */
             width: 160px;
             height: 120px;
             z-index: 200;
@@ -60,16 +58,12 @@
             box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
             overflow: hidden;
         }
-
         .output_canvas {
-            /* Canvas nội tại sẽ lớn (HD), nhưng CSS ép hiển thị nhỏ */
             width: 100%;
             height: 100%;
             transform: scaleX(-1);
             display: block;
         }
-        /* -------------------------- */
-
         .badge {
             display: inline-block;
             background: rgba(0, 0, 0, 0.7);
@@ -85,7 +79,6 @@
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
             text-shadow: 0 0 10px #FFD700;
         }
-
         .guide {
             color: #ccc;
             font-size: 13px;
@@ -93,7 +86,6 @@
             text-shadow: 0 2px 4px black;
             display: block;
         }
-
         button {
             pointer-events: auto;
             cursor: pointer;
@@ -107,27 +99,32 @@
             box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
             animation: pulse 1.5s infinite;
         }
-
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
-
-        .input_video { display: none; }
+        .input_video {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="ui-layer">
-        <div id="status" class="badge">🎄 Merry Christmas 🎄</div>
+        <div id="status"
+             class="badge">🎄 Merry Christmas 🎄</div>
         <div class="guide">
             🖐 <b>Open:</b> Explode &nbsp;|&nbsp; ✊ <b>Fist:</b> Tree &nbsp;|&nbsp; ✌️ <b>V-Sign:</b> Snowfall &nbsp;|&nbsp; 🤘 <b>Rock:</b> Rainbow &nbsp;|&nbsp; 👌 <b>Pinch:</b> Memories
         </div>
-        <button id="btnStart" onclick="startSystem()">START EXPERIENCE</button>
+        <button id="btnStart"
+                onclick="startSystem()">START EXPERIENCE</button>
     </div>
 
-    <div id="preview-container" style="display:none;">
-        <canvas class="output_canvas" width="640" height="480"></canvas>
+    <div id="preview-container"
+         style="display:none;">
+        <canvas class="output_canvas"
+                width="640"
+                height="480"></canvas>
     </div>
 
     <div id="canvas-container"></div>
@@ -252,10 +249,7 @@
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 0, 100);
 
-            renderer = new THREE.WebGLRenderer({
-                antialias: true,
-                alpha: false
-            });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.toneMapping = THREE.ReinhardToneMapping;
@@ -266,9 +260,7 @@
             const renderScene = new THREE.RenderPass(scene, camera);
             const bloomPass = new THREE.UnrealBloomPass(
                 new THREE.Vector2(window.innerWidth, window.innerHeight),
-                1.5,
-                0.4,
-                0.85
+                1.5, 0.4, 0.85
             );
             bloomPass.threshold = 0;
             bloomPass.strength = 1.2;
@@ -315,8 +307,6 @@
                 const y = h - CONFIG.treeHeight / 2;
                 const angle = pct * Math.PI * 2 * CONFIG.spiralLoops + (Math.random() * 0.5);
                 const maxR = (1 - pct) * CONFIG.treeBaseRadius;
-
-                let spread = (type === 'green') ? 0.9 : 0.4;
                 const r = maxR * (0.2 + Math.random() * 0.8);
 
                 pTreeTargets.push(r * Math.cos(angle), y, r * Math.sin(angle));
@@ -365,9 +355,7 @@
         function createPhotos() {
             const geo = new THREE.PlaneGeometry(8, 8);
             const borderGeo = new THREE.PlaneGeometry(9, 9);
-            const borderMat = new THREE.MeshBasicMaterial({
-                color: 0xFFD700
-            });
+            const borderMat = new THREE.MeshBasicMaterial({ color: 0xFFD700 });
 
             for (let i = 0; i < 5; i++) {
                 const mat = new THREE.MeshBasicMaterial({
@@ -463,9 +451,7 @@
             }
             group.geometry.attributes.position.needsUpdate = true;
 
-            if (targetState !== 'COLOR_CHANGE') {
-                group.material.color.setHex(0xffffff);
-            }
+            if (targetState !== 'COLOR_CHANGE') group.material.color.setHex(0xffffff);
 
             if (targetState === 'COLOR_CHANGE') {
                 group.rotation.y += 0.02;
@@ -485,7 +471,6 @@
                     group.scale.set(s, s, s);
                 }
             } else {
-                // Áp dụng xoay cho Tree và Explode
                 group.material.map = (type === 'gold') ? textures.blue : textures[type];
                 group.rotation.y += (handRotY - group.rotation.y) * 0.05;
             }
@@ -495,9 +480,6 @@
             requestAnimationFrame(animate);
             const time = Date.now() * 0.001;
             const speed = 0.06;
-            
-            // --- TĂNG ĐỘ NHẠY Ở ĐÂY ---
-            // Thay vì nhân 2.5, tăng lên 8.0 để xoay nhanh hơn
             const handRotY = (handX - 0.5) * 8.0; 
 
             updateParticleGroup(groupGreen, 'green', state, speed, handRotY, time);
@@ -512,14 +494,10 @@
                 starMesh.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
                 starMesh.rotation.z -= 0.02;
 
-                if (state === 'COLOR_CHANGE') {
-                    starMesh.material.color.setHSL((time * 0.5) % 1, 1.0, 0.5);
-                } else {
-                    starMesh.material.color.setHex(0xffffff);
-                }
+                if (state === 'COLOR_CHANGE') starMesh.material.color.setHSL((time * 0.5) % 1, 1.0, 0.5);
+                else starMesh.material.color.setHex(0xffffff);
                 
                 starMesh.material.opacity = 1.0; 
-
                 photoMeshes.forEach(m => {
                     m.scale.lerp(new THREE.Vector3(0, 0, 0), 0.1);
                     m.visible = false;
@@ -546,6 +524,10 @@
                     mesh.scale.lerp(new THREE.Vector3(s, s, s), 0.1);
                 });
             } else if (state === 'PHOTO') {
+                // Sửa lỗi: Ẩn chữ và sao khi đang xem ảnh chi tiết
+                titleMesh.visible = false;
+                starMesh.visible = false;
+
                 photoMeshes.forEach((mesh, i) => {
                     if (i === selectedIndex) {
                         mesh.position.lerp(new THREE.Vector3(0, 0, 60), 0.1);
@@ -557,31 +539,32 @@
                 });
             }
 
-            // --- RENDER PIPELINE ---
             const currentPhotoVisibility = photoMeshes.map(m => m.visible);
-            
             photoMeshes.forEach(m => m.visible = false);
             composer.render(); 
 
-            const anyPhotoVisible = currentPhotoVisibility.some(v => v === true);
-            if (anyPhotoVisible) {
+            if (currentPhotoVisibility.some(v => v)) {
                 renderer.clearDepth(); 
                 const glowObjects = [groupGreen, groupGold, groupRed, groupGift, titleMesh, starMesh, groundMirror];
+                
+                // Lưu lại trạng thái hiển thị hiện tại của glowObjects
+                const originalVisibility = glowObjects.map(obj => obj ? obj.visible : false);
+
+                // Ẩn tất cả để vẽ ảnh
                 glowObjects.forEach(obj => { if(obj) obj.visible = false; });
-
+                
+                // Vẽ ảnh
                 photoMeshes.forEach((m, i) => m.visible = currentPhotoVisibility[i]);
-
                 renderer.render(scene, camera);
-
-                glowObjects.forEach(obj => { if(obj) obj.visible = true; });
+                
+                // Sửa lỗi: Khôi phục lại đúng trạng thái ban đầu, thay vì bật hết lên true
+                glowObjects.forEach((obj, i) => { if(obj) obj.visible = originalVisibility[i]; });
             }
         }
 
         function startSystem() {
             document.getElementById('btnStart').style.display = 'none';
-            // Hiển thị khung preview khi bắt đầu
             document.getElementById('preview-container').style.display = 'block';
-            
             bgMusic.play().catch(e => console.log(e));
             init3D();
 
@@ -602,29 +585,18 @@
             });
 
             hands.onResults(results => {
-                // --- VẼ CAMERA PREVIEW & SKELETON (STYLE MỚI) ---
                 canvasCtx.save();
                 canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-                // Vẽ ảnh camera nét (độ phân giải cao)
                 canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
                 
                 if (results.multiHandLandmarks) {
                     for (const landmarks of results.multiHandLandmarks) {
-                        // 1. Vẽ xương nối màu vàng (dày hơn một chút để nổi trên nền HD)
-                        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
-                                        {color: '#FFD700', lineWidth: 5}); 
-                        
-                        // 2. Vẽ viền trắng cho khớp (vẽ hình tròn trắng to hơn)
-                        drawLandmarks(canvasCtx, landmarks,
-                                        {color: '#FFFFFF', lineWidth: 0, radius: 6}); 
-
-                        // 3. Vẽ tâm đen cho khớp (vẽ đè lên chấm trắng)
-                        drawLandmarks(canvasCtx, landmarks,
-                                        {color: '#000000', lineWidth: 0, radius: 3}); 
+                        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#FFD700', lineWidth: 5}); 
+                        drawLandmarks(canvasCtx, landmarks, {color: '#FFFFFF', lineWidth: 0, radius: 6}); 
+                        drawLandmarks(canvasCtx, landmarks, {color: '#000000', lineWidth: 0, radius: 3}); 
                     }
                 }
                 canvasCtx.restore();
-                // ------------------------------------
 
                 let targetState = 'TREE';
                 if (results.multiHandLandmarks.length > 0) {
@@ -634,9 +606,9 @@
                     let avgDist = [8, 12, 16, 20].reduce((acc, i) => acc + Math.hypot(lm[i].x - wrist.x, lm[i].y - wrist.y), 0) / 4;
                     const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
                     const indexUp = lm[8].y < lm[6].y,
-                        middleUp = lm[12].y < lm[10].y,
-                        pinkyUp = lm[20].y < lm[18].y,
-                        ringUp = lm[16].y < lm[14].y;
+                          middleUp = lm[12].y < lm[10].y,
+                          pinkyUp = lm[20].y < lm[18].y,
+                          ringUp = lm[16].y < lm[14].y;
 
                     if (avgDist < 0.25) targetState = 'TREE';
                     else if (pinchDist < 0.05) targetState = 'PHOTO';
@@ -656,41 +628,22 @@
                 }
             });
 
-            // Tăng độ phân giải đầu vào camera để hết mờ
             const cameraUtils = new Camera(video, {
                 onFrame: async () => {
-                    await hands.send({
-                        image: video
-                    });
+                    await hands.send({ image: video });
                 },
-                width: 640,  // Độ phân giải cao hơn (HD)
-                height: 480
+                width: 640, height: 480
             });
             cameraUtils.start();
         }
 
         function updateStatusText(st, div) {
             const map = {
-                'TREE': {
-                    text: "🎄 Christmas Tree",
-                    color: "#FFD700"
-                },
-                'PHOTO': {
-                    text: "👌 Memories",
-                    color: "#FFD700"
-                },
-                'COLOR_CHANGE': {
-                    text: "🌈 Rainbow Mode",
-                    color: "#FF00FF"
-                },
-                'SNOW': {
-                    text: "❄️ Snowfall",
-                    color: "#FFFFFF"
-                },
-                'EXPLODE': {
-                    text: "🖐 Gift Burst",
-                    color: "#FFA500"
-                }
+                'TREE': { text: "🎄 Christmas Tree", color: "#FFD700" },
+                'PHOTO': { text: "👌 Memories", color: "#FFD700" },
+                'COLOR_CHANGE': { text: "🌈 Rainbow Mode", color: "#FF00FF" },
+                'SNOW': { text: "❄️ Snowfall", color: "#FFFFFF" },
+                'EXPLODE': { text: "🖐 Gift Burst", color: "#FFA500" }
             };
             div.innerText = map[st].text;
             div.style.color = map[st].color;
