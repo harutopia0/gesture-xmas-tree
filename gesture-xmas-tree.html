@@ -227,9 +227,15 @@
         let pendingState = 'TREE';
         let stabilityCount = 0;
         let selectedIndex = 0;
+        
+        // --- Variables for Inertia ---
         let targetRotationY = 0;
         let currentRotationY = 0;
         let lastHandX = null;
+        let rotationVelocity = 0; // Tốc độ quay hiện tại (quán tính)
+        let isHandActive = false; // Trạng thái có đang dùng tay điều khiển không
+        // -----------------------------
+
         function init3D() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
@@ -446,6 +452,16 @@
             requestAnimationFrame(animate);
             const time = Date.now() * 0.001;
             const speed = 0.06;
+
+            // --- Inertia Logic ---
+            // Nếu tay không hoạt động và đang ở chế độ xoay được, áp dụng quán tính
+            if ((state === 'EXPLODE' || state === 'PHOTO') && !isHandActive) {
+                targetRotationY += rotationVelocity;
+                rotationVelocity *= 0.95; // Ma sát: giảm 5% tốc độ mỗi frame
+                if (Math.abs(rotationVelocity) < 0.001) rotationVelocity = 0;
+            }
+            // ---------------------
+
             currentRotationY += (targetRotationY - currentRotationY) * 0.1;
             updateParticleGroup(groupGreen, 'green', state, speed, currentRotationY, time);
             updateParticleGroup(groupGold, 'gold', state, speed, currentRotationY, time);
@@ -541,16 +557,19 @@
                 canvasCtx.restore();
                 let targetState = state;
                 if (results.multiHandLandmarks.length > 0) {
+                    isHandActive = true; // Tay đang hoạt động -> tắt quán tính
                     const lm = results.multiHandLandmarks[0];
                     const currentHandX = lm[9].x;
                     if (state === 'EXPLODE' || state === 'PHOTO') {
                         if (lastHandX !== null) {
                             const delta = currentHandX - lastHandX;
                             targetRotationY += delta * 5.0;
+                            rotationVelocity = delta * 5.0; // Lưu vận tốc vẩy tay
                         }
                         lastHandX = currentHandX;
                     } else {
                         lastHandX = currentHandX;
+                        rotationVelocity = 0; // Reset vận tốc ở các mode khác
                     }
                     const wrist = lm[0];
                     let avgDist = [8, 12, 16, 20].reduce((acc, i) => acc + Math.hypot(lm[i].x - wrist.x, lm[i].y - wrist.y), 0) / 4;
@@ -565,6 +584,7 @@
                     else if (indexUp && pinkyUp && !middleUp && !ringUp) targetState = 'COLOR_CHANGE';
                     else targetState = 'EXPLODE';
                 } else {
+                    isHandActive = false; // Không thấy tay -> bật quán tính
                     lastHandX = null;
                 }
                 if (targetState === pendingState) {
